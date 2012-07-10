@@ -14,6 +14,11 @@ This tool gathers information in your tilemap, removes unused tiles,
 re-organizes tileset images to most optimized way, corrects tilemap data according to new tileset.
 
 ===
+Requirement:
++ Python 2.7
++ PIL 1.1.7
+
+===
 Execute:
 
 + put optile.py & @optile_config.xml in the same place with tmx-files
