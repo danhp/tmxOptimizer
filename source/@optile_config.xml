@@ -1,0 +1,5 @@
+<config>
+	<input file = "test.tmx"/>
+	<input file = "test2.tmx"/>
+	<keep file = "tile2.png"/>
+</config>

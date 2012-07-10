@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.0" orientation="orthogonal" width="10" height="10" tilewidth="32" tileheight="32">
+ <tileset firstgid="1" name="tile1" tilewidth="32" tileheight="32">
+  <image source="tile1.png" width="256" height="256"/>
+ </tileset>
+ <tileset firstgid="65" name="tile4" tilewidth="32" tileheight="32">
+  <image source="tile2.png" width="512" height="512"/>
+ </tileset>
+ <tileset firstgid="321" name="tile2" tilewidth="32" tileheight="32">
+  <image source="tile3.png" width="256" height="256"/>
+ </tileset>
+ <tileset firstgid="385" name="tile3" tilewidth="32" tileheight="32">
+  <image source="tile4.png" width="256" height="256"/>
+ </tileset>
+ <tileset firstgid="449" name="tile5" tilewidth="32" tileheight="32">
+  <image source="tile5.png" width="256" height="256"/>
+ </tileset>
+ <layer name="Tile Layer 1" width="10" height="10">
+  <data encoding="base64" compression="zlib">
+   eJyTYiAeSI2qpblaAM64AQU=
+  </data>
+ </layer>
+ <layer name="Tile Layer 2" width="10" height="10">
+  <data encoding="base64" compression="zlib">
+   eJxjYCAMohhH1dBDDQgAAM+wA48=
+  </data>
+ </layer>
+ <layer name="Tile Layer 3" width="10" height="10">
+  <data encoding="base64" compression="zlib">
+   eJxjYEAFjgzEgYFSRwswmPwMAJvvAgk=
+  </data>
+ </layer>
+</map>
