@@ -17,6 +17,7 @@ re-organizes tileset images to most optimized way, corrects tilemap data accordi
 Requirement:
 + Python 2.7
 + PIL 1.1.7
++ minidom
 
 ===
 Execute:
