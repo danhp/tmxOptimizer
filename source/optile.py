@@ -44,9 +44,10 @@ gTilesetDuplicate = {}
 gTilesetItemCount = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 gKeepTileset = []
 
-def convertMap(tmx):
+def convertMap(tmx, time_count):
 	global gTilesetMapping
 	global gTilesetItemCount
+	global gTilesetDuplicate
 	doc = minidom.parse(tmx)
 	tilemap  = doc.getElementsByTagName("map")[0]
 	width = int(tilemap.getAttribute("width"))
@@ -58,6 +59,7 @@ def convertMap(tmx):
 		
 		global gTilesetMapping
 		global gTilesetItemCount
+		global gTilesetDuplicate
 		for tileset in re_data['tilesets']:
 			if tileset['firstgid'] <= tileID and tileset['lastgid'] >= tileID:
 				# print("findLayer", tileID, tileset['index'], tileID - tileset['firstgid'], 0)
@@ -80,9 +82,15 @@ def convertMap(tmx):
 				tmp_num += (number<<(__i))
 				__i += 8
 				if __i == 32:
-					if gTilesetDuplicate.has_key(tmp_num):
-						tmp_num = gTilesetDuplicate[tmp_num]
-					findLayer(tmp_num)
+					if tmp_num != 0:
+						if gTilesetDuplicate.has_key(tmp_num):
+							tmp_num = gTilesetDuplicate[tmp_num]
+						# if gTilesetDuplicate.has_key(tmp_num):
+							# print(tmp_num, gTilesetDuplicate[tmp_num])
+							# tmp_num = gTilesetDuplicate[tmp_num]
+						# else:
+							# print(tmp_num)
+						findLayer(tmp_num)
 					layerdata_append(tmp_num)
 					__i = 0
 					tmp_num = 0
@@ -137,46 +145,58 @@ def convertMap(tmx):
 				gTilesetItemCount[tilesetObj['index']] = numOfTile
 			# print(tilesetObj['keep'], tilesetObj['image'], gKeepTileset, tilesetObj['keep'] in gKeepTileset)
 			else:
-				#check if duplicate tile
-				img_src = Image.open(tilesetObj['image'])
-				tilew = int(tilesetObj['tilewidth'])
-				tileh = int(tilesetObj['tileheight'])
-				imgw = int(tilesetObj['imageW'])
-				imgh = int(tilesetObj['imageH'])
-				numOfCols = int(imgw/tilew)
-				numOfRows = int(imgh/tileh)
-				firstID = tilesetObj['firstgid']
-				
-				tiles = []
-				tmpx = 0
-				tmpy = 0
-				for c in range(0, numOfCols - 1):
+				if time_count == 0: # run once
+					#check if duplicate tile
+					img_src = Image.open(tilesetObj['image'])
+					tilew = int(tilesetObj['tilewidth'])
+					tileh = int(tilesetObj['tileheight'])
+					imgw = int(tilesetObj['imageW'])
+					imgh = int(tilesetObj['imageH'])
+					numOfCols = int(imgw/tilew)
+					numOfRows = int(imgh/tileh)
+					firstID = tilesetObj['firstgid']
+					# print(firstID)
+					
+					tiles = []
 					tmpx = 0
-					for r in range (0, numOfRows):
-						box = (tmpx, tmpy, tilew, tileh)
-						region = img_src.crop(box)
-						tmp = [firstID + c + r*numOfCols, tmpx, tmpy, tilew, tileh, region]
-						tiles.append(tmp)
-						tmpx += tilew
-					tmpy += tileh
-				
-				checking = []
-				matching = {}
-				for src in tiles:
-					match_index = -1
-					region_src = src[5]
-					for cmp in checking:
-						region_cmp = cmp[5]
-						found = ImageChops.difference(region_src, region_cmp).getbbox() is None
-						if found:
-							match_index = cmp[0]
-							break
-					if match_index >= 0:
-						matching[src[0]] = match_index
-					else:
-						checking.append([src[0], src[1], src[2], src[3], src[4], src[5]])
-				gTilesetDuplicate = matching
-				# print(matching)
+					tmpy = 0
+					
+					for r in range(numOfRows):
+						tmpx = 0
+						for c in range (numOfCols):
+							box = (tmpx, tmpy, tmpx + tilew, tmpy + tileh)
+							region = img_src.crop(box)
+							# region.load()
+							img_des = Image.new('RGBA', (tilew, tileh))
+							img_des.paste(region, (0, 0))
+							
+							# print(box)
+							# img_des.save("./tmp/" + tilesetObj['image'] + "_id_" + str(firstID + c + r*numOfCols) + ".png")
+							
+							tmp = [firstID + c + r*numOfCols, tmpx, tmpy, tilew, tileh, img_des]
+							tiles.append(tmp)
+							tmpx += tilew
+						tmpy += tileh
+					
+					checking = []
+					dup_count = 0
+					
+					for src in tiles:
+						match_index = -1
+						region_src = src[5]
+						for cmp in checking:
+							region_cmp = cmp[5]
+							found = ImageChops.difference(region_src, region_cmp).getbbox() is None
+							if found:	
+								match_index = cmp[0]
+								break
+						if match_index >= 0:
+							gTilesetDuplicate[src[0]] = match_index
+							dup_count += 1
+						else:
+							checking.append([src[0], src[1], src[2], src[3], src[4], src[5]])
+					print("	Duplicate tiles in " + tilesetObj['image'] + " : " + str(dup_count) + "/" + str(len(tiles)))
+	# if time_count == 0: print(gTilesetDuplicate)
 	return re_data
 	
 def CommonProcess(re_data):		
@@ -360,7 +380,7 @@ def run(cnf):
 	if len(input) > 0:
 		print("[Step 1] Collect map information")
 		for i in range(len(input)):
-			re = convertMap(input[i])
+			re = convertMap(input[i], i)
 			conv.append(re)
 		print("[Step 2] Adjust tileset data")
 		tilset =  CommonProcess(conv[0])
