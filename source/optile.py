@@ -25,6 +25,7 @@ import math
 import os
 import sys
 import shutil
+import ImageChops
 
 def GetFileNX(long_file_path):
 	return os.path.basename(long_file_path)
@@ -39,6 +40,7 @@ def GetFileX(long_file_path):
 	return os.path.splitext(filename)[1]
 
 gTilesetMapping = {}
+gTilesetDuplicate = {}
 gTilesetItemCount = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 gKeepTileset = []
 
@@ -78,6 +80,8 @@ def convertMap(tmx):
 				tmp_num += (number<<(__i))
 				__i += 8
 				if __i == 32:
+					if gTilesetDuplicate.has_key(tmp_num):
+						tmp_num = gTilesetDuplicate[tmp_num]
 					findLayer(tmp_num)
 					layerdata_append(tmp_num)
 					__i = 0
@@ -132,9 +136,47 @@ def convertMap(tmx):
 				# print("xxx", tilesetObj['index'], re_data['numTileset'])
 				gTilesetItemCount[tilesetObj['index']] = numOfTile
 			# print(tilesetObj['keep'], tilesetObj['image'], gKeepTileset, tilesetObj['keep'] in gKeepTileset)
-			
-	
-	
+			else:
+				#check if duplicate tile
+				img_src = Image.open(tilesetObj['image'])
+				tilew = int(tilesetObj['tilewidth'])
+				tileh = int(tilesetObj['tileheight'])
+				imgw = int(tilesetObj['imageW'])
+				imgh = int(tilesetObj['imageH'])
+				numOfCols = int(imgw/tilew)
+				numOfRows = int(imgh/tileh)
+				firstID = tilesetObj['firstgid']
+				
+				tiles = []
+				tmpx = 0
+				tmpy = 0
+				for c in range(0, numOfCols - 1):
+					tmpx = 0
+					for r in range (0, numOfRows):
+						box = (tmpx, tmpy, tilew, tileh)
+						region = img_src.crop(box)
+						tmp = [firstID + c + r*numOfCols, tmpx, tmpy, tilew, tileh, region]
+						tiles.append(tmp)
+						tmpx += tilew
+					tmpy += tileh
+				
+				checking = []
+				matching = {}
+				for src in tiles:
+					match_index = -1
+					region_src = src[5]
+					for cmp in checking:
+						region_cmp = cmp[5]
+						found = ImageChops.difference(region_src, region_cmp).getbbox() is None
+						if found:
+							match_index = cmp[0]
+							break
+					if match_index >= 0:
+						matching[src[0]] = match_index
+					else:
+						checking.append([src[0], src[1], src[2], src[3], src[4], src[5]])
+				gTilesetDuplicate = matching
+				# print(matching)
 	return re_data
 	
 def CommonProcess(re_data):		
@@ -341,6 +383,6 @@ def LoadConfig(fn):
 	return cnf
 	
 # LoadConfig("@optile_config.xml")
-print("Tileset Optimize Tool. Version 1.0")
+print("Tileset Optimize Tool. Version 1.1")
 print("Copyright (C) 2012 Guava7")
 run(LoadConfig("@optile_config.xml"))
