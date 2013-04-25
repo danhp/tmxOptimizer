@@ -323,28 +323,6 @@ def IndividualProcess(tmx, re_data, tileset):
 	global gTilesetItemCount
 	doc = minidom.parse(tmx)
 	tilemap  = doc.getElementsByTagName("map")[0]
-	# modify firstid
-	# tmp_count = 1
-	# tmp_index = 0
-	# for tileset in re_data['tilesets']:
-		# if gTilesetItemCount[tmp_index] == 0:
-			# tileset['firstgid'] = tmp_count
-			# tmp_count += 1
-			# tileset['lastgid'] = tmp_count - 1
-			# tmp_index += 1
-		# else:
-			# _tmpsize = gTilesetItemCount[tmp_index]
-			# print(tmp_index, _tmpsize)
-			# _tmpsize = math.sqrt(_tmpsize)
-			# if _tmpsize - int(_tmpsize) == 0:
-				# _tmpsize = int(_tmpsize)
-			# else:
-				# _tmpsize = int(_tmpsize) + 1
-
-			# tileset['firstgid'] = tmp_count
-			# tmp_count += _tmpsize*_tmpsize
-			# tileset['lastgid'] = tmp_count - 1
-			# tmp_index += 1
 
 	# modify cell id
 	for i in range(re_data['numLayer']):
@@ -398,10 +376,6 @@ def IndividualProcess(tmx, re_data, tileset):
 	f = open("./output/" + tmx, 'w')
 	doc.writexml(f)
 	f.close()
-	# print(gTilesetItemCount)
-	# print(re_data)
-	# print(gTilesetMapping)
-	# return re_data
 
 def run(cnf):
 	global gKeepTileset
