@@ -269,7 +269,6 @@ def CommonProcess(re_data):
 		else:
 			_tmpsize = gTilesetItemCount[tmp_index]
 			if _tmpsize > 0:
-				tmp_index += 1
 				_tmpsize = math.sqrt(_tmpsize)
 				if _tmpsize - int(_tmpsize) == 0:
 					_tmpsize = int(_tmpsize)
@@ -278,6 +277,7 @@ def CommonProcess(re_data):
 				image_w, image_h = img_src.size
 				sizew = _tmpsize * tileset['tilewidth']
 				sizeh = _tmpsize * tileset['tileheight']
+				gTilesetItemCount[tmp_index] = _tmpsize*_tmpsize
 				runlen = int(image_w / tileset['tilewidth'])
 				img_des = Image.new('RGBA', (sizew, sizeh))
 
@@ -306,6 +306,15 @@ def CommonProcess(re_data):
 				tileset['tileheight'] = 1
 				tileset['imageW'], tileset['imageH'] = img_des.size
 				img_des.save("./output/" + tileset['image'], optimize=1)
+				gTilesetItemCount[tmp_index] = 1
+				
+	tmp_count = 1
+	for tmp_index in range(len(re_data['tilesets'])):
+		tileset = re_data['tilesets'][tmp_index]
+		tileset['firstgid'] = tmp_count
+		tmp_count += gTilesetItemCount[tmp_index]
+		tileset['lastgid'] = tmp_count - 1
+
 	return re_data['tilesets']
 	
 def IndividualProcess(tmx, re_data, tileset):
@@ -315,26 +324,27 @@ def IndividualProcess(tmx, re_data, tileset):
 	doc = minidom.parse(tmx)
 	tilemap  = doc.getElementsByTagName("map")[0]
 	# modify firstid
-	tmp_count = 1
-	tmp_index = 0
-	for tileset in re_data['tilesets']:
-		if gTilesetItemCount[tmp_index] == 0:
-			tileset['firstgid'] = tmp_count
-			tmp_count += 1
-			tileset['lastgid'] = tmp_count - 1
-			tmp_index += 1
-		else:
-			_tmpsize = gTilesetItemCount[tmp_index]
-			_tmpsize = math.sqrt(_tmpsize)
-			if _tmpsize - int(_tmpsize) == 0:
-				_tmpsize = int(_tmpsize)
-			else:
-				_tmpsize = int(_tmpsize) + 1
+	# tmp_count = 1
+	# tmp_index = 0
+	# for tileset in re_data['tilesets']:
+		# if gTilesetItemCount[tmp_index] == 0:
+			# tileset['firstgid'] = tmp_count
+			# tmp_count += 1
+			# tileset['lastgid'] = tmp_count - 1
+			# tmp_index += 1
+		# else:
+			# _tmpsize = gTilesetItemCount[tmp_index]
+			# print(tmp_index, _tmpsize)
+			# _tmpsize = math.sqrt(_tmpsize)
+			# if _tmpsize - int(_tmpsize) == 0:
+				# _tmpsize = int(_tmpsize)
+			# else:
+				# _tmpsize = int(_tmpsize) + 1
 
-			tileset['firstgid'] = tmp_count
-			tmp_count += _tmpsize*_tmpsize
-			tileset['lastgid'] = tmp_count - 1
-			tmp_index += 1
+			# tileset['firstgid'] = tmp_count
+			# tmp_count += _tmpsize*_tmpsize
+			# tileset['lastgid'] = tmp_count - 1
+			# tmp_index += 1
 
 	# modify cell id
 	for i in range(re_data['numLayer']):
