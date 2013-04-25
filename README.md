@@ -13,6 +13,10 @@ For  Tile Map Editor tool, that’s a nightmare if you try to optimize tileset b
 This tool gathers information in your tilemap, removes unused tiles, 
 re-organizes tileset images to most optimized way, corrects tilemap data according to new tileset.
 
+This tool also supports optimize multiple tileset files with *the same structure*:
++ same layers structure: layer index, layer type
++ same tileset structure: tileset files, tileset index
+
 ===
 Requirement:
 + Python 2.7

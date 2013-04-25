@@ -27,6 +27,11 @@ import sys
 import shutil
 import ImageChops
 
+_debug = False
+
+def log(msg):
+	if _debug: print(msg)
+
 def GetFileNX(long_file_path):
 	return os.path.basename(long_file_path)
 
@@ -39,15 +44,24 @@ def GetFileX(long_file_path):
 	filename = GetFileNX(long_file_path)
 	return os.path.splitext(filename)[1]
 
-gTilesetMapping = {}
+gTilesetMapping = {} #mapping from TMX tile coord to used coord, record's format is [tileset-index, tile-index, rearranged-tile-index]
 gTilesetDuplicate = {}
-gTilesetItemCount = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+# array stored number of tiles of each tileset
+gTilesetItemCount =  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
 gKeepTileset = []
 
-def convertMap(tmx, time_count):
+''' Convert TMX data to python data structure 
+'''
+
+__isFirstConvertedMap = True # check if the first-time call convertMap()
+def convertMap(tmx):
 	global gTilesetMapping
 	global gTilesetItemCount
 	global gTilesetDuplicate
+	global __isFirstConvertedMap
+	
 	doc = minidom.parse(tmx)
 	tilemap  = doc.getElementsByTagName("map")[0]
 	width = int(tilemap.getAttribute("width"))
@@ -55,72 +69,37 @@ def convertMap(tmx, time_count):
 	
 	re_data = {'width':width, 'height':height, 'numLayer': 0,'layers_data': [], 'layers_type':[], 'numTileset':0, 'tilesets':[]}
 	
-	def findLayer(tileID):
-		
+	
+	''' Convert tileID coordinator
+		TileID coordinator:
+			+ TMX number tileID from 1 to total tiles of all tilesets. 
+				For example, there're two tileset. The first have 16 tiles, and the second have 8 tiles.
+				Tile index will be count from 1 to (16 + 8). 
+				16 tiles of the first are numbered from 1 to 16
+				8 tiles of the sencond are numbered from 17 to 24
+				0 is used for "empty cell"
+			+ Used coordinator:
+				tile is indexed by pairs of value [tileset-index, tile-in-tileset-index]
+				For above example, 16 tiles of the first are numbered [1, 1], [1, 2], ... [1, 16]
+				 tiles of the sencond are numbered from [2, 1], [2, 2], ... [2, 8]
+	'''
+	def convertTileCoord(tileID):
 		global gTilesetMapping
 		global gTilesetItemCount
 		global gTilesetDuplicate
 		for tileset in re_data['tilesets']:
 			if tileset['firstgid'] <= tileID and tileset['lastgid'] >= tileID:
-				# print("findLayer", tileID, tileset['index'], tileID - tileset['firstgid'], 0)
 				if tileset['keep'] == False:
-					gTilesetMapping[tileID] = [tileset['index'], tileID - tileset['firstgid'], 0]
+					gTilesetMapping[tileID] = [tileset['index'], tileID - tileset['firstgid'], 0] #0: means need to be re-arrange if any
 				else:
-					gTilesetMapping[tileID] = [tileset['index'], tileID - tileset['firstgid'], tileID - tileset['firstgid']]
+					gTilesetMapping[tileID] = [tileset['index'], tileID - tileset['firstgid'], tileID - tileset['firstgid']] #1: reject re-arrangement
 				return
 	
 	for node in tilemap.childNodes:
-		if node.nodeName == "layer":
-			layerdata = node.getElementsByTagName("data")[0].childNodes[0].data
-			layerdata = layerdata.decode('base64').decode('zlib')
-			array = []
-			lord = ord
-			layerdata_append = array.append
-			__i = 0
-			tmp_num = 0
-			for number in map(lord, layerdata):
-				tmp_num += (number<<(__i))
-				__i += 8
-				if __i == 32:
-					if tmp_num != 0:
-						if gTilesetDuplicate.has_key(tmp_num):
-							tmp_num = gTilesetDuplicate[tmp_num]
-						# if gTilesetDuplicate.has_key(tmp_num):
-							# print(tmp_num, gTilesetDuplicate[tmp_num])
-							# tmp_num = gTilesetDuplicate[tmp_num]
-						# else:
-							# print(tmp_num)
-						findLayer(tmp_num)
-					layerdata_append(tmp_num)
-					__i = 0
-					tmp_num = 0
-			
-			re_data['layers_data'].append(array)
-			re_data['layers_type'].append("layer")
-			re_data['numLayer'] = re_data['numLayer'] + 1
-		
-		elif node.nodeName == "objectgroup":
-			# echo("objectgroup")
-			# print(node.childNodes.child)
-			objlist = []
-			for obj in node.getElementsByTagName("object"):
-				objConv = {
-					'x': obj.getAttribute("x"), 
-					'y': obj.getAttribute("y"), 
-					'width': obj.getAttribute("width"), 
-					'height': obj.getAttribute("height"), 
-					'name': obj.getAttribute("name"),
-					'gid': obj.getAttribute("gid")
-				}
-				# print(objConv)
-				objlist.append(objConv)
-				if objConv['gid'] != "":
-					findLayer(int(obj.getAttribute("gid")))
-			re_data['layers_data'].append(objlist)
-			re_data['layers_type'].append("objectgroup")
-			re_data['numLayer'] = re_data['numLayer'] + 1
-			
-		elif node.nodeName == "tileset":
+		# --------------------------------
+		# if tileset data
+		# --------------------------------			
+		if "tileset" == node.nodeName:
 			tilesetObj = {
 				'firstgid' : int(node.getAttribute("firstgid")), 
 				'name' : node.getAttribute("name"), 
@@ -141,12 +120,12 @@ def convertMap(tmx, time_count):
 			tilesetObj['keep'] = tilesetObj['image'] in gKeepTileset
 			re_data['tilesets'].append(tilesetObj)
 			if tilesetObj['keep'] == True:
-				# print("xxx", tilesetObj['index'], re_data['numTileset'])
 				gTilesetItemCount[tilesetObj['index']] = numOfTile
-			# print(tilesetObj['keep'], tilesetObj['image'], gKeepTileset, tilesetObj['keep'] in gKeepTileset)
 			else:
-				if time_count == 0: # run once
-					#check if duplicate tile
+				# because all TMX files have the same structure (required),
+				# check the first TMX is enought
+				if __isFirstConvertedMap: 	
+					#get tileset information
 					img_src = Image.open(tilesetObj['image'])
 					tilew = int(tilesetObj['tilewidth'])
 					tileh = int(tilesetObj['tileheight'])
@@ -155,8 +134,8 @@ def convertMap(tmx, time_count):
 					numOfCols = int(imgw/tilew)
 					numOfRows = int(imgh/tileh)
 					firstID = tilesetObj['firstgid']
-					# print(firstID)
 					
+					#save all tiles info , included bitmap data
 					tiles = []
 					tmpx = 0
 					tmpy = 0
@@ -166,18 +145,19 @@ def convertMap(tmx, time_count):
 						for c in range (numOfCols):
 							box = (tmpx, tmpy, tmpx + tilew, tmpy + tileh)
 							region = img_src.crop(box)
-							# region.load()
 							img_des = Image.new('RGBA', (tilew, tileh))
 							img_des.paste(region, (0, 0))
 							
-							# print(box)
-							# img_des.save("./tmp/" + tilesetObj['image'] + "_id_" + str(firstID + c + r*numOfCols) + ".png")
+							if _debug:
+								log(box)
+								img_des.save("./tmp/" + tilesetObj['image'] + "_id_" + str(firstID + c + r*numOfCols) + ".png")
 							
 							tmp = [firstID + c + r*numOfCols, tmpx, tmpy, tilew, tileh, img_des]
 							tiles.append(tmp)
 							tmpx += tilew
 						tmpy += tileh
 					
+					#check if duplicated (the same bitmap data)
 					checking = []
 					dup_count = 0
 					
@@ -195,8 +175,71 @@ def convertMap(tmx, time_count):
 							dup_count += 1
 						else:
 							checking.append([src[0], src[1], src[2], src[3], src[4], src[5]])
-					print("	Duplicate tiles in " + tilesetObj['image'] + " : " + str(dup_count) + "/" + str(len(tiles)))
-	# if time_count == 0: print(gTilesetDuplicate)
+					print("	Duplicate tiles in %s : %s/%s tiles"%(tilesetObj['image'], str(dup_count), str(len(tiles))))
+		
+		# --------------------------------
+		# if layer tile is a normal layer 
+		# --------------------------------
+		elif "layer" == node.nodeName:
+			# Decode layer data. 
+			# Layer data is encoded by nested zlib & bas64
+			layerdata = node.getElementsByTagName("data")[0].childNodes[0].data
+			layerdata = layerdata.decode('base64').decode('zlib')
+			array = []
+			lord = ord
+			layerdata_append = array.append
+			__i = 0
+			tmp_num = 0
+			
+			# Now layer data is array of 1 byte number. While a tile index (id) is save as integer with 4bytes.
+			# Therefore, compress 4 bytes of layer-data into one 4-byte integer number
+			# tmp_num: output 4-byte integer number
+			# __i: number of bit. Shift 8 bits foreach iteration
+			
+			for number in map(lord, layerdata):
+				tmp_num += (number<<(__i))
+				__i += 8
+				if __i == 32: #now tmp_num is 32 bits integer
+					if tmp_num != 0:
+						if gTilesetDuplicate.has_key(tmp_num):
+							tmp_num = gTilesetDuplicate[tmp_num]
+						convertTileCoord(tmp_num)
+					layerdata_append(tmp_num)
+					__i = 0
+					tmp_num = 0
+			
+			re_data['layers_data'].append(array)
+			re_data['layers_type'].append("layer")
+			re_data['numLayer'] = re_data['numLayer'] + 1
+		
+		# --------------------------------
+		# if layer tile is a object layer 
+		# save object structure.
+		# For object tile-based object (object displayed a tile), record tileID info
+		# --------------------------------
+		elif "objectgroup" == node.nodeName:
+			objlist = []
+			for obj in node.getElementsByTagName("object"):
+				objConv = {
+					'x': obj.getAttribute("x"), 
+					'y': obj.getAttribute("y"), 
+					'width': obj.getAttribute("width"), 
+					'height': obj.getAttribute("height"), 
+					'name': obj.getAttribute("name"),
+					'gid': obj.getAttribute("gid")
+				}
+				objlist.append(objConv)
+				# For tile-based object (object displayed a tile), record tileID info
+				if objConv['gid'] != "":
+					convertTileCoord(int(obj.getAttribute("gid")))
+			re_data['layers_data'].append(objlist)
+			re_data['layers_type'].append("objectgroup")
+			re_data['numLayer'] = re_data['numLayer'] + 1
+		
+		
+		
+	if (_debug and __isFirstConvertedMap): log(gTilesetDuplicate)
+	__isFirstConvertedMap = False
 	return re_data
 	
 def CommonProcess(re_data):		
@@ -204,32 +247,30 @@ def CommonProcess(re_data):
 	global gTilesetItemCount
 	
 	# count tilest in tiles
-	# gTilesetItemCount = []
 	for key in sorted(gTilesetMapping.iterkeys()):
 		itemInfo = gTilesetMapping[key]
+		#tile info:
+		# [0]: tileset index
+		# [1]: tile index
+		# [2]: tile index after re-arranging
 		tilesetIndex = itemInfo[0]
 		if re_data['tilesets'][tilesetIndex]['keep'] == False:
 			itemInfo[2] = gTilesetItemCount[tilesetIndex]
 			gTilesetItemCount[tilesetIndex] += 1
-	# print(gTilesetMapping)
 	
 	# modify tilesetImage	
 	tmp_index = 0
 	for tmp_index in range(len(re_data['tilesets'])):
 		tileset = re_data['tilesets'][tmp_index]
 		_tmp_imagename  = tileset['image']
-		# print(_tmp_imagename)
 		img_src = Image.open(_tmp_imagename)
 		if tileset['keep'] == True:
-			# print(tileset)
 			img_src.save("./output/" + tileset['image'], optimize=1)
 		else:
 			_tmpsize = gTilesetItemCount[tmp_index]
-			# print(_tmpsize)
 			if _tmpsize > 0:
 				tmp_index += 1
 				_tmpsize = math.sqrt(_tmpsize)
-				# print(_tmpsize)
 				if _tmpsize - int(_tmpsize) == 0:
 					_tmpsize = int(_tmpsize)
 				else:
@@ -253,9 +294,7 @@ def CommonProcess(re_data):
 						toTile_c = int(toTile % _tmpsize)
 						toTile_x = toTile_c*tileset['tilewidth']
 						toTile_y = toTile_r*tileset['tileheight']
-						# print(_tmpsize, itemInfo[0], fromTile, toTile, toTile_r, toTile_c, toTile_x, toTile_y)
 						
-						# print(fromTile_x, fromTile_y, toTile_x, toTile_y)
 						tmp = img_src.crop((fromTile_x, fromTile_y, fromTile_x + tileset['tilewidth'], fromTile_y + tileset['tileheight']))
 						tmp.load()
 						img_des.paste(tmp, (toTile_x, toTile_y))
@@ -298,7 +337,6 @@ def IndividualProcess(tmx, re_data, tileset):
 			tmp_index += 1
 
 	# modify cell id
-	# print(gTilesetMapping)
 	for i in range(re_data['numLayer']):
 		if re_data['layers_type'][i] == "layer":
 			tmp = re_data['layers_data'][i]
@@ -380,7 +418,7 @@ def run(cnf):
 	if len(input) > 0:
 		print("[Step 1] Collect map information")
 		for i in range(len(input)):
-			re = convertMap(input[i], i)
+			re = convertMap(input[i])
 			conv.append(re)
 		print("[Step 2] Adjust tileset data")
 		tilset =  CommonProcess(conv[0])
