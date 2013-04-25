@@ -17,17 +17,17 @@
  </tileset>
  <layer name="Tile Layer 1" width="10" height="10">
   <data encoding="base64" compression="zlib">
-   eJyTYiAeSI2qpblaAM64AQU=
+   eJytyttSgWEAheHfpcmekCSk7KJsInsR6dJ7Tpr5LsCaeWbWwRuPRdENCZKkSJMhy/9yfp4CtxQpUeYu6Cr+PVUeqPFInUbQNf0nWjzzQpsO3aDr+X1eGTDkjXdGQTf2J0z5YMacTxZBt/RXrNmwZceer6A7+Ee+OXHmhwu/QXft/QHFixhh
   </data>
  </layer>
  <layer name="Tile Layer 2" width="10" height="10">
   <data encoding="base64" compression="zlib">
-   eJxjYCAMohhH1dBDDQgAAM+wA48=
+   eJxjYBgFgwkAAAGQAAE=
   </data>
  </layer>
  <layer name="Tile Layer 3" width="10" height="10">
   <data encoding="base64" compression="zlib">
-   eJxjYEAFjgzEgYFSRwswmPwMAJvvAgk=
+   eJxjYBgFgwkAAAGQAAE=
   </data>
  </layer>
  <objectgroup name="Object Layer 1" width="10" height="10"/>
