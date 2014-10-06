@@ -19,13 +19,13 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from xml.dom import minidom
-import Image, ImageDraw
+from PIL import Image, ImageDraw
 import zlib
 import math
 import os
 import sys
 import shutil
-import ImageChops
+from PIL import ImageChops
 
 _debug = False
 
@@ -316,7 +316,12 @@ def CommonProcess(re_data):
 		tileset['lastgid'] = tmp_count - 1
 
 	return re_data['tilesets']
-	
+
+FLAG_FLIP_HORIZONTALLY = 0x80000000;
+FLAG_FLIP_VERTICALLY = 0x40000000;
+FLAG_FLIP_DIAGONALLY = 0x20000000;
+MASK_CLEAR = 0xE0000000;
+
 def IndividualProcess(tmx, re_data, tileset):
 	re_data['tilesets'] = tileset
 	global gTilesetMapping
@@ -331,11 +336,23 @@ def IndividualProcess(tmx, re_data, tileset):
 			for j in range(len(tmp)):
 				if tmp[j] > 0:
 					# print(tmp[j])
-					itemInfo = gTilesetMapping[tmp[j]]
+
+					flipHorizontally = ((tmp[j] & FLAG_FLIP_HORIZONTALLY) != 0);
+					flipVertically = ((tmp[j] & FLAG_FLIP_VERTICALLY) != 0);
+					flipDiagonally = ((tmp[j] & FLAG_FLIP_DIAGONALLY) != 0);
+
+					itemInfo = gTilesetMapping[tmp[j] & ~MASK_CLEAR]
 					tilesetID = itemInfo[0]
 					tileIndex = itemInfo[2]
 					firstTileID = re_data['tilesets'][tilesetID]['firstgid']
 					tmp[j] = firstTileID + tileIndex
+					
+					if flipHorizontally:
+						tmp[j]+=FLAG_FLIP_HORIZONTALLY
+					if flipVertically:
+						tmp[j]+=FLAG_FLIP_VERTICALLY
+					if flipDiagonally:
+						tmp[j]+=FLAG_FLIP_DIAGONALLY
 	
 	# save new tilemap data
 	layerIdx = 0
